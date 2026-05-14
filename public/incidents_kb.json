@@ -1,0 +1,712 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "total": 40,
+    "generated": "2025-11-25",
+    "description": "Nuaav L2 Support — Historical Incident Knowledge Base (Assessment Asset)"
+  },
+  "incidents": [
+    {
+      "id": "INC-0001",
+      "title": "Auth service returning 401 for valid tokens after key rotation",
+      "category": "Authentication / Token Validation",
+      "severity": "P1",
+      "date": "2025-01-14",
+      "description": "Enterprise customers began receiving 401 Unauthorized errors at 09:22 AM PST despite having valid, non-expired session tokens. The issue started immediately following a scheduled token-signing key rotation. All downstream services that cached the old public key were rejecting tokens signed with the new key.",
+      "resolution": "Rolled back the signing key to the previous version as an emergency fix. Coordinated a hot-reload of the auth service across all nodes to propagate the new key before re-attempting the rotation. Added a 30-minute overlap window to the rotation procedure so old and new keys are both valid during transition.",
+      "tags": [
+        "auth",
+        "401",
+        "token",
+        "key-rotation",
+        "enterprise",
+        "jwt"
+      ]
+    },
+    {
+      "id": "INC-0002",
+      "title": "Database connection pool exhaustion causing API timeouts",
+      "category": "Database / Connection Pool",
+      "severity": "P1",
+      "date": "2025-01-28",
+      "description": "API response times spiked from ~80ms to 12–30 seconds starting at 14:05 UTC. Root cause was connection pool exhaustion on the primary read replica. A batch reporting job had leaked connections by failing to close cursors inside an exception handler, consuming all 200 available pool slots over ~45 minutes.",
+      "resolution": "Restarted the offending batch job to release connections immediately. Applied an emergency patch to the cursor close logic. Increased pool size from 200 to 350 as a temporary buffer. Added connection pool utilisation alerting at 70% and 90% thresholds.",
+      "tags": [
+        "database",
+        "connection-pool",
+        "timeout",
+        "performance",
+        "batch-job",
+        "postgres"
+      ]
+    },
+    {
+      "id": "INC-0003",
+      "title": "Deployment regression broke payment webhook signature validation",
+      "category": "Deployment Regression",
+      "severity": "P1",
+      "date": "2025-02-03",
+      "description": "Payment confirmation webhooks from Stripe started failing validation at 11:30 AM after a routine deploy. The deploy included a dependency bump that changed how HMAC signatures are computed — a trailing newline difference caused all signature comparisons to return false.",
+      "resolution": "Identified the breaking dependency version via git diff on package-lock.json. Rolled back the single dependency to the previous version and redeployed within 22 minutes. Queued the 847 failed webhook events for replay. Added integration tests covering HMAC validation with real Stripe test payloads.",
+      "tags": [
+        "deployment",
+        "regression",
+        "webhook",
+        "stripe",
+        "hmac",
+        "payment",
+        "signature"
+      ]
+    },
+    {
+      "id": "INC-0004",
+      "title": "Rate limiter misconfiguration blocking legitimate API traffic",
+      "category": "Rate Limiting / Throttling",
+      "severity": "P2",
+      "date": "2025-02-11",
+      "description": "High-volume enterprise tenant ENT-1044 reported that ~40% of their API calls were being rejected with 429 Too Many Requests. Investigation revealed the rate limiter was applying per-IP limits instead of per-tenant limits after a config change pushed without review. Their requests originated from a small set of NAT gateway IPs shared by hundreds of users.",
+      "resolution": "Reverted the rate limiter config to per-tenant mode. Temporarily whitelisted ENT-1044's IP range while the fix propagated. Implemented a config change approval workflow for rate limiter rules.",
+      "tags": [
+        "rate-limiting",
+        "429",
+        "throttling",
+        "enterprise",
+        "NAT",
+        "config"
+      ]
+    },
+    {
+      "id": "INC-0005",
+      "title": "Data pipeline stuck — Snowflake COPY INTO failing on malformed CSV",
+      "category": "Data Pipeline / ETL",
+      "severity": "P2",
+      "date": "2025-02-19",
+      "description": "The nightly ingestion pipeline for ClientB stopped at the COPY INTO stage at 02:14 AM. Snowflake rejected the file due to a field containing an unescaped double-quote, causing a parse error on row 14,882 of 200,000. The upstream CSV export had changed its quoting behaviour after a vendor update.",
+      "resolution": "Manually fixed the malformed file and re-ran COPY INTO with ON_ERROR=CONTINUE to capture remaining anomalies. Added a pre-validation step to the pipeline using Python csv.Sniffer to detect quote character mismatches before upload. Opened a ticket with the vendor.",
+      "tags": [
+        "snowflake",
+        "pipeline",
+        "etl",
+        "csv",
+        "copy-into",
+        "parsing",
+        "data-quality"
+      ]
+    },
+    {
+      "id": "INC-0006",
+      "title": "SSO login loop — SAML assertion audience mismatch",
+      "category": "Authentication / SSO",
+      "severity": "P2",
+      "date": "2025-03-05",
+      "description": "Users at tenant ORG-2201 were caught in an infinite login redirect loop when using SSO. The SAML assertion's Audience element contained the old SP entity ID from before a domain migration. Our service provider validation rejected every assertion, redirecting back to the IdP.",
+      "resolution": "Updated the SP entity ID in the tenant's SAML configuration to match the new domain. Coordinated with the tenant's IT admin to update the corresponding Audience value in their IdP. Tested with five user accounts before declaring resolution.",
+      "tags": [
+        "sso",
+        "saml",
+        "auth",
+        "login",
+        "entity-id",
+        "idp",
+        "audience"
+      ]
+    },
+    {
+      "id": "INC-0007",
+      "title": "API Gateway returning 502 due to upstream TLS certificate expiry",
+      "category": "API Gateway / TLS",
+      "severity": "P1",
+      "date": "2025-03-12",
+      "description": "All traffic through the API Gateway to the internal analytics microservice started returning 502 Bad Gateway at 08:00 AM. The TLS certificate on the analytics service had expired at 07:59 AM. The gateway performs mutual TLS and rejected the expired certificate immediately.",
+      "resolution": "Issued and deployed a new certificate via Let's Encrypt in 8 minutes. Restarted the analytics service to load the new cert. Identified the missed renewal — the auto-renew cron job had silently failed two weeks prior due to a permission change. Fixed cron permissions and added alerting for cert expiry within 14 days.",
+      "tags": [
+        "tls",
+        "certificate",
+        "502",
+        "api-gateway",
+        "mtls",
+        "expiry",
+        "cron"
+      ]
+    },
+    {
+      "id": "INC-0008",
+      "title": "Search service degraded — Elasticsearch heap exhaustion",
+      "category": "Performance / Resource Exhaustion",
+      "severity": "P2",
+      "date": "2025-03-20",
+      "description": "The product search API began returning partial results and intermittent 503s. Elasticsearch heap utilisation was at 98%, triggering frequent GC pauses. A new wildcard query pattern introduced in a feature release was extremely memory-intensive and ran on every search request.",
+      "resolution": "Identified the wildcard pattern in slow query logs. Disabled the feature flag to stop the expensive queries. Cleared the field data cache to recover heap. Rewrote the query to use an n-gram index instead of runtime wildcard expansion. Re-enabled after load testing confirmed heap stayed below 60%.",
+      "tags": [
+        "elasticsearch",
+        "search",
+        "heap",
+        "memory",
+        "503",
+        "performance",
+        "gc"
+      ]
+    },
+    {
+      "id": "INC-0009",
+      "title": "Email notification service silently dropping messages — SES bounce handling bug",
+      "category": "Notification / Email",
+      "severity": "P2",
+      "date": "2025-04-01",
+      "description": "Customers reported not receiving password reset and invoice emails. Investigation found that the SES bounce handler was incorrectly marking all addresses that had ever soft-bounced as permanently suppressed. Approximately 12,000 email addresses were suppressed in error over a 9-day window.",
+      "resolution": "Fixed the bounce handler to distinguish hard vs soft bounces correctly. Cleared the erroneously suppressed addresses from the SES suppression list. Replayed failed notifications for affected accounts. Added monitoring on daily suppression list growth rate.",
+      "tags": [
+        "email",
+        "ses",
+        "bounce",
+        "notification",
+        "suppression",
+        "aws"
+      ]
+    },
+    {
+      "id": "INC-0010",
+      "title": "Scheduled report export jobs failing — S3 bucket policy changed",
+      "category": "Storage / Permissions",
+      "severity": "P2",
+      "date": "2025-04-08",
+      "description": "All scheduled PDF and CSV report exports began failing at 06:00 AM. The export service IAM role had lost write permission to the customer-facing S3 bucket after a security team audit applied a restrictive bucket policy. Jobs failed silently — error logs showed AccessDenied but no alert was triggered.",
+      "resolution": "Restored the necessary s3:PutObject permission via an updated bucket policy. Added explicit error alerting for AccessDenied in the export pipeline. Introduced a nightly canary job that writes and reads a test object to verify permissions proactively.",
+      "tags": [
+        "s3",
+        "iam",
+        "permissions",
+        "export",
+        "access-denied",
+        "aws",
+        "bucket-policy"
+      ]
+    },
+    {
+      "id": "INC-0011",
+      "title": "GraphQL API returning stale data — Redis cache not invalidated after write",
+      "category": "Caching / Data Consistency",
+      "severity": "P2",
+      "date": "2025-04-15",
+      "description": "Multiple tenants reported seeing outdated records after making updates via the API. The GraphQL write resolvers were updating the database but not invalidating the corresponding Redis cache keys. Reads continued returning cached values with a 5-minute TTL. Issue affected any object type using cache-aside pattern.",
+      "resolution": "Added cache invalidation calls immediately after successful database writes in all write resolvers. Flushed affected cache namespaces to force fresh reads. Added integration tests that assert cache is cleared on write operations.",
+      "tags": [
+        "redis",
+        "cache",
+        "graphql",
+        "stale-data",
+        "invalidation",
+        "consistency"
+      ]
+    },
+    {
+      "id": "INC-0012",
+      "title": "Webhook delivery failures — internal queue consumer deadlocked",
+      "category": "Messaging / Queue",
+      "severity": "P1",
+      "date": "2025-04-22",
+      "description": "Outbound webhook delivery stopped for all tenants at 16:30 UTC. The RabbitMQ consumer had entered a deadlock state — two message processing threads were each holding a lock the other needed. The deadlock was triggered by a race condition when processing large batch webhook payloads.",
+      "resolution": "Restarted the consumer service to break the deadlock. Unacknowledged messages were requeued automatically by RabbitMQ. Fixed the locking order to prevent future deadlock (acquired lock A before lock B consistently). Added a consumer health check that alerts if queue depth exceeds 500 with zero throughput for 5 minutes.",
+      "tags": [
+        "rabbitmq",
+        "webhook",
+        "queue",
+        "deadlock",
+        "consumer",
+        "threading",
+        "race-condition"
+      ]
+    },
+    {
+      "id": "INC-0013",
+      "title": "Login page blank for subset of users — CDN serving stale JS bundle",
+      "category": "Frontend / CDN",
+      "severity": "P2",
+      "date": "2025-05-06",
+      "description": "Approximately 8% of users saw a blank login page. These users were hitting a CDN edge node that had cached the previous JS bundle and was not serving the latest version. The deploy had not included a cache purge step, and the old bundle referenced a removed API endpoint.",
+      "resolution": "Triggered a manual CDN cache purge across all edge nodes. Added a mandatory CDN purge step to the deployment runbook. Switched JS bundle filenames to include content hashes so stale caches are bypassed automatically.",
+      "tags": [
+        "cdn",
+        "cache",
+        "frontend",
+        "deployment",
+        "javascript",
+        "bundle",
+        "purge"
+      ]
+    },
+    {
+      "id": "INC-0014",
+      "title": "Tenant data isolation failure — wrong tenant ID injected in multi-tenant query",
+      "category": "Data Integrity / Multi-tenancy",
+      "severity": "P1",
+      "date": "2025-05-13",
+      "description": "A code change to the request context middleware accidentally dropped the tenant ID from the request context under high concurrency. Affected queries fell back to a default tenant ID, causing some users to briefly see records belonging to a different tenant.",
+      "resolution": "Immediately rolled back the middleware change. Audited access logs to identify all cross-tenant reads — 37 events across 3 tenant pairs over 14 minutes. Notified affected tenants per data breach protocol. Added an assertion in the query layer that rejects any query where tenant ID is null or default.",
+      "tags": [
+        "multi-tenancy",
+        "data-isolation",
+        "security",
+        "middleware",
+        "context",
+        "concurrency"
+      ]
+    },
+    {
+      "id": "INC-0015",
+      "title": "dbt pipeline failing — model dependency cycle introduced in PR",
+      "category": "Data Pipeline / dbt",
+      "severity": "P2",
+      "date": "2025-05-20",
+      "description": "The nightly dbt run failed at compilation with a 'Cycle detected' error. A new model added in a PR referenced an intermediate model that, further upstream, depended on the new model — creating a circular dependency. The CI check had not caught it because it only ran on changed files.",
+      "resolution": "Broke the cycle by extracting the shared logic into a new base model that both dependent models could reference. Updated the CI pipeline to run dbt compile on the full DAG, not just changed files.",
+      "tags": [
+        "dbt",
+        "pipeline",
+        "dag",
+        "dependency",
+        "cycle",
+        "data-engineering",
+        "ci"
+      ]
+    },
+    {
+      "id": "INC-0016",
+      "title": "Slow dashboard load — N+1 query pattern on tenant settings",
+      "category": "Performance / Database",
+      "severity": "P3",
+      "date": "2025-05-27",
+      "description": "The admin dashboard was taking 8 – 14 seconds to load for tenants with more than 50 users. Database profiling revealed an N+1 query pattern: a separate SELECT was being issued for each user's settings record rather than joining in a single query. For 50 users this produced 51 queries per page load.",
+      "resolution": "Rewrote the settings loader to use a single IN-clause query and eagerly load settings in batch. Page load time dropped to under 400ms. Added a query count assertion in the test suite for the dashboard endpoint.",
+      "tags": [
+        "performance",
+        "n+1",
+        "database",
+        "query",
+        "dashboard",
+        "postgres",
+        "slow"
+      ]
+    },
+    {
+      "id": "INC-0017",
+      "title": "OAuth 2.0 token refresh failing — refresh token rotation bug",
+      "category": "Authentication / OAuth",
+      "severity": "P2",
+      "date": "2025-06-03",
+      "description": "Mobile app users were being logged out unexpectedly after sessions longer than 1 hour. The OAuth token refresh endpoint was issuing a new refresh token but failing to invalidate the old one in the database due to a transaction rollback triggered by a constraint violation on an unrelated audit table.",
+      "resolution": "Fixed the constraint violation in the audit table (a duplicate unique key). Separated the audit write into its own transaction so it does not roll back the token rotation. Issued replacement refresh tokens to affected users via a background job.",
+      "tags": [
+        "oauth",
+        "token-refresh",
+        "auth",
+        "mobile",
+        "transaction",
+        "rollback"
+      ]
+    },
+    {
+      "id": "INC-0018",
+      "title": "File upload failures — presigned S3 URL expiring before client upload completes",
+      "category": "Storage / File Upload",
+      "severity": "P2",
+      "date": "2025-06-10",
+      "description": "Users uploading files larger than ~500 MB were receiving 403 errors mid-upload. The presigned S3 URL was generated with a 5-minute expiry, which was insufficient for large files on slower connections. The URL expired before the multipart upload completed.",
+      "resolution": "Extended presigned URL expiry to 60 minutes for files over 100 MB. Switched large file uploads to S3 multipart upload with individual part presigning so each part has its own expiry. Added client-side file size detection to choose the correct upload path.",
+      "tags": [
+        "s3",
+        "upload",
+        "presigned-url",
+        "403",
+        "multipart",
+        "timeout",
+        "file-size"
+      ]
+    },
+    {
+      "id": "INC-0019",
+      "title": "Alerting system silent — PagerDuty integration token rotated without update",
+      "category": "Monitoring / Alerting",
+      "severity": "P1",
+      "date": "2025-06-17",
+      "description": "The ops team discovered that no PagerDuty alerts had fired for 6 hours during a production degradation. The PagerDuty API token had been rotated as part of a quarterly credential rotation but the new token had not been updated in the alerting service environment variables.",
+      "resolution": "Updated the PagerDuty token in the secrets manager and restarted the alerting service. Replayed missed alerts manually. Added a synthetic alert test — a canary alert fired every 15 minutes — so silence for more than 20 minutes pages on-call via a backup channel.",
+      "tags": [
+        "alerting",
+        "pagerduty",
+        "monitoring",
+        "credentials",
+        "token-rotation",
+        "ops"
+      ]
+    },
+    {
+      "id": "INC-0020",
+      "title": "Customer CSV export truncated — streaming response closed prematurely",
+      "category": "API / Data Export",
+      "severity": "P2",
+      "date": "2025-06-24",
+      "description": "Enterprise customers exporting large datasets via the /export/csv endpoint received incomplete files. The HTTP response was being closed after 30 seconds by a load balancer timeout, cutting off streaming CSV generation mid-file. Customers with fewer than ~5,000 rows were unaffected.",
+      "resolution": "Increased the load balancer idle timeout from 30 s to 300 s for export endpoints. Implemented a background job + download link pattern for exports over 10,000 rows so the response is not held open. Added a row count and checksum footer to CSV exports so truncation is detectable.",
+      "tags": [
+        "export",
+        "csv",
+        "streaming",
+        "timeout",
+        "load-balancer",
+        "api",
+        "enterprise"
+      ]
+    },
+    {
+      "id": "INC-0021",
+      "title": "Audit log gaps — high-throughput writes causing log buffer overflow",
+      "category": "Audit / Compliance",
+      "severity": "P2",
+      "date": "2025-07-01",
+      "description": "Compliance team flagged gaps in the audit log during a routine review. During peak write periods, the in-process audit log buffer was overflowing and silently dropping entries. The buffer was sized for normal traffic but a new bulk-import feature generated 10x the usual write volume.",
+      "resolution": "Switched audit log writes to an async Kafka topic with durable retention. Increased consumer throughput. Backfilled missing audit entries from application logs where possible. Flagged a 2-hour gap on 2025-06-28 for compliance review.",
+      "tags": [
+        "audit",
+        "compliance",
+        "kafka",
+        "buffer",
+        "overflow",
+        "bulk-import",
+        "logging"
+      ]
+    },
+    {
+      "id": "INC-0022",
+      "title": "API latency spike — DNS resolution timeout on third-party service calls",
+      "category": "Network / DNS",
+      "severity": "P2",
+      "date": "2025-07-08",
+      "description": "P99 API latency jumped from 180ms to 4.2 seconds. Distributed tracing showed the spike was in outbound HTTP calls to the address-validation microservice. The service was resolving the third-party DNS on every request rather than caching the result, and the upstream DNS server was experiencing intermittent timeouts.",
+      "resolution": "Implemented DNS result caching with a 60-second TTL in the HTTP client. Switched the DNS resolver to a more reliable provider. Latency returned to baseline within minutes of the cache taking effect.",
+      "tags": [
+        "dns",
+        "latency",
+        "network",
+        "timeout",
+        "caching",
+        "third-party",
+        "tracing"
+      ]
+    },
+    {
+      "id": "INC-0023",
+      "title": "Batch job double-processing records — missing idempotency key",
+      "category": "Data Integrity / Idempotency",
+      "severity": "P2",
+      "date": "2025-07-15",
+      "description": "A nightly reconciliation job processed 4,200 transaction records twice, resulting in duplicate debit entries for a subset of customers. The job had been restarted mid-run after a transient failure but lacked idempotency — reprocessing from checkpoint did not skip already-committed records.",
+      "resolution": "Added an idempotency key (job run ID + record ID) to each write. Duplicate detection in the database layer now rejects records with a known key. Reversed the duplicate debit entries manually. Added a post-run reconciliation check that compares input count to committed count.",
+      "tags": [
+        "idempotency",
+        "batch-job",
+        "duplicate",
+        "data-integrity",
+        "reconciliation",
+        "debit"
+      ]
+    },
+    {
+      "id": "INC-0024",
+      "title": "New tenant onboarding failing — schema migration not applied to new databases",
+      "category": "Multi-tenancy / Database Migration",
+      "severity": "P2",
+      "date": "2025-07-22",
+      "description": "Five new tenants onboarded over a 3-day period reported errors on first login. Their tenant databases had been created from a snapshot that predated a schema migration adding a required user_preferences table. The migration runner only targeted existing databases at migration time.",
+      "resolution": "Applied the missing migration to the five affected tenant databases. Updated the tenant provisioning script to always run pending migrations on newly created databases before marking them active. Added a smoke test as part of the onboarding flow that queries the expected tables.",
+      "tags": [
+        "migration",
+        "schema",
+        "onboarding",
+        "multi-tenancy",
+        "postgres",
+        "provisioning"
+      ]
+    },
+    {
+      "id": "INC-0025",
+      "title": "Slow file processing — unintentional synchronous virus scan on every upload",
+      "category": "Performance / File Processing",
+      "severity": "P3",
+      "date": "2025-07-29",
+      "description": "Users complained that file uploads 'hung' for 20 – 40 seconds. A recently added virus scan integration was running synchronously in the upload request path, blocking the response until the scan completed. The scanner was never intended to block the upload response.",
+      "resolution": "Moved the virus scan to an async post-upload step triggered via a queue. Upload endpoint now returns 200 immediately and marks files as 'pending scan'. Files are made accessible only after scan completion. Scan results are pushed to the UI via a webhook.",
+      "tags": [
+        "file-upload",
+        "performance",
+        "virus-scan",
+        "async",
+        "queue",
+        "blocking"
+      ]
+    },
+    {
+      "id": "INC-0026",
+      "title": "OAuth scope mismatch causing 403 on read operations after re-authentication",
+      "category": "Authentication / OAuth",
+      "severity": "P2",
+      "date": "2025-08-05",
+      "description": "Users who re-authenticated via a new SSO link received tokens with a reduced scope that excluded read:reports. The SSO link was generated by an older SDK version that did not include the reports scope in the authorization request. Affected users could not access the reporting module.",
+      "resolution": "Identified and retired all SSO links generated by the old SDK. Issued new links with correct scopes. Added a scope validation step at login that checks the token contains all required scopes for the tenant's feature set and forces re-auth if any are missing.",
+      "tags": [
+        "oauth",
+        "scope",
+        "403",
+        "sso",
+        "sdk",
+        "permissions",
+        "auth"
+      ]
+    },
+    {
+      "id": "INC-0027",
+      "title": "Reporting job OOM — unbound data load into memory",
+      "category": "Performance / Memory",
+      "severity": "P2",
+      "date": "2025-08-12",
+      "description": "The monthly billing report generation job crashed with an OutOfMemoryError on the largest tenant. The job was loading the entire transaction history for the period (2.1M records) into a Python list before aggregating. Memory usage peaked at 14 GB before the process was killed.",
+      "resolution": "Rewrote the aggregation to use server-side SQL GROUP BY and streaming cursors so records are never fully loaded into memory. Memory footprint dropped to under 200 MB. Added a job memory limit alert at 4 GB.",
+      "tags": [
+        "oom",
+        "memory",
+        "reporting",
+        "python",
+        "streaming",
+        "sql",
+        "billing"
+      ]
+    },
+    {
+      "id": "INC-0028",
+      "title": "Feature flag rollout causing inconsistent UI — flag evaluated server and client side",
+      "category": "Feature Flags / Configuration",
+      "severity": "P3",
+      "date": "2025-08-19",
+      "description": "After a 10% feature flag rollout, some users saw a mix of old and new UI components on the same page. The flag was being evaluated independently on the server (for API responses) and the client (for rendering), with different bucketing seeds. The same user fell into different buckets server- vs client-side.",
+      "resolution": "Standardised flag evaluation to be server-authoritative. Server evaluates the flag, includes the result in the API response, and the client uses that result without re-evaluating. Ensured consistent bucketing by passing the user ID as the seed in both contexts.",
+      "tags": [
+        "feature-flag",
+        "ui",
+        "consistency",
+        "rollout",
+        "client-server",
+        "bucketing"
+      ]
+    },
+    {
+      "id": "INC-0029",
+      "title": "Data sync job failing — external API paginating differently after vendor update",
+      "category": "Third-party Integration / API",
+      "severity": "P2",
+      "date": "2025-08-26",
+      "description": "The nightly sync job pulling data from the CRM vendor API started returning incomplete datasets. The vendor had changed their pagination from page-based to cursor-based in an update, returning a next_cursor field instead of a next_page integer. The sync job did not handle the new format and stopped after the first page.",
+      "resolution": "Updated the sync job to detect and handle both pagination styles. Added a record count reconciliation step that compares total records returned to the vendor's reported total count. Alerted on count mismatch.",
+      "tags": [
+        "integration",
+        "api",
+        "pagination",
+        "vendor",
+        "sync",
+        "crm",
+        "cursor"
+      ]
+    },
+    {
+      "id": "INC-0030",
+      "title": "Login failures for users with special characters in email — URL encoding bug",
+      "category": "Authentication / Input Handling",
+      "severity": "P2",
+      "date": "2025-09-02",
+      "description": "Users with + characters in their email addresses (e.g. user+tag@domain.com) were unable to log in. The login form was URL-encoding the + as a space before submission, and the auth service was treating 'user tag@domain.com' as the email. The auth lookup failed to find the account.",
+      "resolution": "Fixed the frontend form to use encodeURIComponent instead of a raw URL encode. Updated the auth service to normalise inbound emails by trimming and lowercasing before lookup. Added regression tests with special-character email addresses.",
+      "tags": [
+        "auth",
+        "login",
+        "url-encoding",
+        "email",
+        "special-characters",
+        "input-handling"
+      ]
+    },
+    {
+      "id": "INC-0031",
+      "title": "Session expiry not enforced — JWT exp claim ignored in middleware",
+      "category": "Authentication / Session",
+      "severity": "P1",
+      "date": "2025-09-09",
+      "description": "A security audit found that expired JWTs were being accepted by the API. The authentication middleware was validating the signature but not checking the exp claim. Tokens issued before a credential compromise event would remain valid indefinitely.",
+      "resolution": "Added explicit exp claim validation to the middleware. Force-expired all tokens issued before the audit date. Implemented a token blacklist for revoked tokens. Completed a full security review of all claim validation logic.",
+      "tags": [
+        "jwt",
+        "session",
+        "auth",
+        "expiry",
+        "security",
+        "middleware",
+        "token"
+      ]
+    },
+    {
+      "id": "INC-0032",
+      "title": "Snowflake query timeout — missing clustering key on large fact table",
+      "category": "Data Warehouse / Performance",
+      "severity": "P2",
+      "date": "2025-09-16",
+      "description": "Ad-hoc analytics queries against the orders fact table began timing out after the table grew beyond 800M rows. Queries were performing full table scans because the table lacked a clustering key. Snowflake was scanning all micro-partitions for date-filtered queries.",
+      "resolution": "Added a clustering key on (order_date, tenant_id). Ran SYSTEM$CLUSTERING_INFORMATION to monitor progress. Query times dropped from timeout to under 8 seconds for typical date-range queries. Added query cost monitoring with alerts for queries exceeding 60 credits.",
+      "tags": [
+        "snowflake",
+        "clustering",
+        "performance",
+        "query-timeout",
+        "fact-table",
+        "analytics"
+      ]
+    },
+    {
+      "id": "INC-0033",
+      "title": "Notification emails sent in wrong language — locale not passed to template engine",
+      "category": "Localisation / Notifications",
+      "severity": "P3",
+      "date": "2025-09-23",
+      "description": "Tenants with non-English locales (FR, DE, ES) received transactional emails in English. The email templating service was not receiving the user locale from the notification dispatch service — the locale field was omitted from the event payload after a schema change.",
+      "resolution": "Added the locale field back to the notification event schema. Updated all dispatch sites to include the user locale. Backfilled the locale in queued pending notifications. Added schema validation on the event consumer to reject events with missing required fields.",
+      "tags": [
+        "localisation",
+        "email",
+        "notification",
+        "locale",
+        "template",
+        "schema"
+      ]
+    },
+    {
+      "id": "INC-0034",
+      "title": "API 500 errors on tenant delete — foreign key constraint violation",
+      "category": "Database / Referential Integrity",
+      "severity": "P2",
+      "date": "2025-09-30",
+      "description": "Attempting to delete an offboarded tenant via the admin API returned 500 Internal Server Error. The deletion was failing on a foreign key constraint — the billing_invoices table still had records referencing the tenant. The deletion logic did not cascade or pre-clean dependent records.",
+      "resolution": "Updated the tenant deletion procedure to run in the correct dependency order: invoices → subscriptions → users → tenant. Added a pre-deletion audit step that exports all tenant data to cold storage before deletion. Tested against a staging tenant.",
+      "tags": [
+        "database",
+        "foreign-key",
+        "deletion",
+        "constraint",
+        "cascade",
+        "offboarding",
+        "admin"
+      ]
+    },
+    {
+      "id": "INC-0035",
+      "title": "Bulk import job rejecting valid rows — locale-dependent decimal parsing",
+      "category": "Data Import / Parsing",
+      "severity": "P2",
+      "date": "2025-10-07",
+      "description": "A European customer's bulk import file was rejecting 60% of rows as invalid. Their CSV used commas as decimal separators (e.g. 1.299,99 for €1,299.99) which is standard in their locale. The import parser was hardcoded to expect period-decimal format and treated the commas as field delimiters.",
+      "resolution": "Added locale-aware decimal parsing that detects the decimal separator from the file's first 10 rows. Allowed tenants to specify their locale in the import configuration UI. Re-ran the customer's import successfully.",
+      "tags": [
+        "import",
+        "csv",
+        "parsing",
+        "locale",
+        "decimal",
+        "europe",
+        "data-quality"
+      ]
+    },
+    {
+      "id": "INC-0036",
+      "title": "Async job worker crashing — unhandled promise rejection in Node.js",
+      "category": "Application Error / Worker",
+      "severity": "P2",
+      "date": "2025-10-14",
+      "description": "The background job worker process was crashing and restarting every 2 – 4 minutes. Logs showed an unhandled promise rejection in the email dispatch handler when the SMTP server returned a transient error. In Node.js versions >= 15, unhandled rejections crash the process.",
+      "resolution": "Added try-catch around all async email dispatch calls. Implemented a global unhandledRejection handler as a safety net that logs and quarantines the failing job rather than crashing. Added a dead-letter queue for jobs that fail more than 3 times.",
+      "tags": [
+        "nodejs",
+        "promise",
+        "async",
+        "worker",
+        "crash",
+        "email",
+        "smtp"
+      ]
+    },
+    {
+      "id": "INC-0037",
+      "title": "Report generation failing for tenants using custom fiscal year",
+      "category": "Business Logic / Reporting",
+      "severity": "P2",
+      "date": "2025-10-21",
+      "description": "Tenants configured with a non-standard fiscal year (e.g. April – March) received reports showing data for the calendar year instead of their fiscal year. The report date-range calculation was ignoring the tenant's fiscal year offset setting and defaulting to January – December.",
+      "resolution": "Fixed the date-range calculation to read the tenant's fiscal_year_start_month setting. Added unit tests covering all 12 possible fiscal year offsets. Regenerated the last 3 quarterly reports for the 4 affected tenants.",
+      "tags": [
+        "reporting",
+        "fiscal-year",
+        "date-range",
+        "tenant-config",
+        "business-logic"
+      ]
+    },
+    {
+      "id": "INC-0038",
+      "title": "Intermittent 504 from load balancer — health check path returning 302 redirect",
+      "category": "Infrastructure / Load Balancer",
+      "severity": "P2",
+      "date": "2025-10-28",
+      "description": "The load balancer was intermittently marking backend instances as unhealthy and removing them from the pool, causing 504 errors for active connections. The health check endpoint had been moved to /health/live but the load balancer was still configured to check /, which now returned a 302 redirect. Most load balancers treat non-200 as unhealthy.",
+      "resolution": "Updated the load balancer health check path to /health/live. Added a readiness check at /health/ready that verifies database and cache connectivity. Implemented a deployment checklist item to confirm health check paths before applying any routing config changes.",
+      "tags": [
+        "load-balancer",
+        "504",
+        "health-check",
+        "302",
+        "redirect",
+        "infrastructure"
+      ]
+    },
+    {
+      "id": "INC-0039",
+      "title": "Customer API keys leaking in error logs — exception handler logging raw request",
+      "category": "Security / Secrets Management",
+      "severity": "P1",
+      "date": "2025-11-04",
+      "description": "A security review found that API keys passed in query parameters were being logged in full in the application error logs when a 400 Bad Request occurred. The exception handler was logging the raw request URL, which included the api_key parameter in plaintext. Logs are accessible to all engineering staff.",
+      "resolution": "Updated the exception handler to redact all known sensitive query parameter names (api_key, token, secret, password) before logging. Rotated all API keys that were present in the affected log window. Implemented a log scrubber in the pipeline to catch future secrets using pattern matching.",
+      "tags": [
+        "security",
+        "api-key",
+        "secrets",
+        "logging",
+        "redaction",
+        "pii",
+        "error-handling"
+      ]
+    },
+    {
+      "id": "INC-0040",
+      "title": "Mobile app crashing on startup — config endpoint returning 404 after path change",
+      "category": "Mobile / API Compatibility",
+      "severity": "P1",
+      "date": "2025-11-11",
+      "description": "The iOS and Android apps began crashing on startup for all users after a backend deploy. The apps make a synchronous call to /api/v1/config on launch to load feature flags and remote configuration. The backend had renamed this endpoint to /api/v2/config without maintaining a redirect or versioned fallback for older app versions.",
+      "resolution": "Added a 301 redirect from /api/v1/config to /api/v2/config to restore compatibility. Confirmed both iOS (App Store version) and Android (Play Store version) recovered without a forced update. Introduced a backwards-compatibility policy requiring v1 endpoints to be kept alive for 6 months after a v2 release.",
+      "tags": [
+        "mobile",
+        "api",
+        "versioning",
+        "404",
+        "startup",
+        "config",
+        "backwards-compatibility"
+      ]
+    }
+  ]
+}

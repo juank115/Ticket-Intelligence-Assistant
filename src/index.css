@@ -1,0 +1,321 @@
+@import "tailwindcss";
+
+/* ─── 和紙 Washi — Design Tokens ───────────────────────── */
+:root {
+  color-scheme: light;
+
+  /* Washi paper backgrounds */
+  --color-bg:           #F2EDE4;
+  --color-surface:      #FAF7F1;
+  --color-surface-2:    #F0EBE1;
+  --color-surface-3:    #E6E0D4;
+
+  /* Borders — like faint brush traces */
+  --color-border:       rgba(44, 36, 32, 0.08);
+  --color-border-light: rgba(44, 36, 32, 0.14);
+
+  /* Text — sumi ink (墨) */
+  --color-text:           #2C2420;
+  --color-text-secondary: #7A6E62;
+  --color-text-muted:     #B5A99A;
+
+  /* Single accent — shu-iro 朱色 (muted vermillion/terracotta) */
+  --color-accent:       #B8503C;
+  --color-accent-hover: #9C4232;
+  --color-accent-light: rgba(184, 80, 60, 0.12);
+  --color-accent-bg:    rgba(184, 80, 60, 0.05);
+
+  /* Status — muted, organic tones */
+  --color-success:      #5B8C5A;
+  --color-success-bg:   rgba(91, 140, 90, 0.07);
+  --color-warning:      #B89A3C;
+  --color-warning-bg:   rgba(184, 154, 60, 0.07);
+  --color-danger:       #B54B3A;
+  --color-danger-bg:    rgba(181, 75, 58, 0.06);
+
+  /* Priority — understated */
+  --color-p1: #B54B3A;
+  --color-p2: #B89A3C;
+  --color-p3: #5B8C5A;
+
+  /* Radii — minimal, almost square */
+  --radius:    3px;
+  --radius-sm: 2px;
+  --radius-lg: 4px;
+
+  /* Shadows — barely there, like paper layers */
+  --shadow-card:     none;
+  --shadow-elevated: 0 1px 8px rgba(44, 36, 32, 0.05);
+
+  /* Slow, contemplative transitions */
+  --transition: 400ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  --transition-slow: 800ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* ─── Global Reset ───────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: 'EB Garamond', Georgia, serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Washi paper texture — subtle linen grain */
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  background-attachment: fixed;
+}
+
+code, pre {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+/* ─── Scrollbar — thin, ink-like ────────────────────── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-muted);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* ─── Typography — serene, contemplative ─────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-text);
+}
+
+/* ─── Card — paper layer ────────────────────────────── */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  transition: border-color var(--transition);
+}
+
+.card:hover {
+  border-color: var(--color-border-light);
+}
+
+/* ─── Glass (header) — frosted washi ─────────────────── */
+.glass {
+  background: rgba(242, 237, 228, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* ─── Badges — ink stamps ───────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 2px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.badge-p1 {
+  background: var(--color-danger-bg);
+  color: var(--color-p1);
+  border: 1px solid rgba(181, 75, 58, 0.2);
+}
+
+.badge-p2 {
+  background: var(--color-warning-bg);
+  color: var(--color-p2);
+  border: 1px solid rgba(184, 154, 60, 0.2);
+}
+
+.badge-p3 {
+  background: var(--color-success-bg);
+  color: var(--color-p3);
+  border: 1px solid rgba(91, 140, 90, 0.18);
+}
+
+/* ─── Buttons — ink on paper ────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: var(--color-text);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: 'EB Garamond', serif;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-accent);
+}
+
+.btn-primary:active:not(:disabled) {
+  opacity: 0.85;
+}
+
+.btn-primary:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 400;
+  font-family: 'EB Garamond', serif;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-secondary:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border-color: rgba(44, 36, 32, 0.2);
+}
+
+/* ─── Skeleton Loading — breathing pulse ─────────────── */
+@keyframes breathe {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.15; }
+}
+
+.skeleton {
+  background: var(--color-surface-3);
+  animation: breathe 2.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-line {
+  height: 10px;
+  margin-bottom: 10px;
+  border-radius: 2px;
+}
+
+.skeleton-line:last-child { width: 55%; }
+
+/* ─── Animations — slow, contemplative ──────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.8; }
+  50%      { opacity: 0.15; }
+}
+
+.pulse { animation: pulse-dot 2.4s ease-in-out infinite; }
+
+/* ─── Ink wash — active streaming indicator ──────────── */
+@keyframes inkWash {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  20%  { opacity: 0.6; }
+  80%  { opacity: 0.6; }
+  100% { transform: translateX(400%); opacity: 0; }
+}
+
+.scan-bar {
+  height: 1px;
+  background: var(--color-accent);
+  animation: inkWash 3s ease-in-out infinite;
+  width: 25%;
+  opacity: 0.5;
+}
+
+/* ─── Progress Bar — ink brush stroke ───────────────── */
+.progress-bar {
+  height: 2px;
+  background: var(--color-surface-3);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 1px;
+  background: var(--color-text);
+  transition: width var(--transition-slow);
+}
+
+/* ─── Scrollable Panel ───────────────────────────────── */
+.panel-scroll {
+  overflow-y: auto;
+  max-height: calc(100vh - 110px);
+}
+
+@media (max-width: 768px) {
+  .panel-scroll { max-height: none; }
+}
+
+/* ─── Divider — brush trace ─────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 16px 0;
+}
+
+/* ─── Input focus — subtle ink ring ──────────────────── */
+textarea:focus, input:focus {
+  outline: none;
+  border-color: rgba(44, 36, 32, 0.2) !important;
+  box-shadow: none !important;
+}
+
+/* ─── Panel title ─────────────────────────────────────── */
+.panel-title {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--color-text);
+  letter-spacing: 0.01em;
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* ─── Section label — ink stamp style ────────────────── */
+.section-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+/* ─── Panel active state — subtle left border ────────── */
+.panel-active {
+  border-left: 2px solid var(--color-accent) !important;
+}
