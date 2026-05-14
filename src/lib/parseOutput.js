@@ -54,7 +54,8 @@ function extractRootCauses(text) {
   if (section === null) return null;
 
   const causes = [];
-  const regex = /<cause\s+category="([^"]*?)"\s+rationale="([^"]*?)"\s*\/?\s*>/g;
+  // Reject <, >, & inside attribute values to prevent attribute breakout / XSS via LLM output
+  const regex = /<cause\s+category="([^"<>&]*?)"\s+rationale="([^"<>&]*?)"\s*\/?\s*>/g;
   let match;
 
   while ((match = regex.exec(section)) !== null) {

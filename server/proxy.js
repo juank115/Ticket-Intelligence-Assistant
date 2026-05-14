@@ -6,9 +6,36 @@ dotenv.config();
 
 const app = express();
 
+// ─── CORS: only allow requests from known local dev origins ─────────────────
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
+
+app.use(cors({
+  origin(origin, callback) {
+    // Allow requests with no Origin header (curl, Postman, same-origin)
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS: origin not allowed'));
+    }
+  },
+  methods: ['POST'],
+  allowedHeaders: ['Content-Type', 'x-api-key'],
+}));
+
+// ─── Security headers applied to every response ────────────────────────────
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '0');                       // modern browsers: CSP replaces this
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+  next();
+});
+
 // ─── Body limit: 64 KB is more than enough for any support ticket ─────────────
-// The previous 10 MB limit enabled DoS via oversized payloads.
-app.use(cors());
 app.use(express.json({ limit: '64kb' }));
 
 // ─── In-memory rate limiter ───────────────────────────────────────────────────
@@ -67,14 +94,14 @@ function validateRequest(req, res, next) {
     });
   }
 
-  // Only allow known safe models to be requested
+  // Only allow known safe models — model is required
   const ALLOWED_MODELS = [
     'claude-sonnet-4-20250514',
     'claude-opus-4-20250514',
     'claude-haiku-4-5-20251001',
   ];
-  if (model && !ALLOWED_MODELS.includes(model)) {
-    return res.status(400).json({ error: `Model '${model}' is not allowed.` });
+  if (!model || !ALLOWED_MODELS.includes(model)) {
+    return res.status(400).json({ error: 'Model parameter is required and must be an allowed model.' });
   }
 
   next();
@@ -102,10 +129,22 @@ app.post('/api/claude', rateLimit, validateRequest, async (req, res) => {
     });
 
     if (!response.ok) {
+      // Log the full error server-side for debugging; send only a safe message to the client
       const errorBody = await response.text();
+      console.error(`[Anthropic API ${response.status}]`, errorBody);
+
+      const safeMessages = {
+        400: 'Bad request — check the input and try again.',
+        401: 'Invalid API key. Configure a valid key in Settings or .env.',
+        403: 'API access denied. Check your Anthropic account permissions.',
+        429: 'Rate limit exceeded. Please wait before trying again.',
+        500: 'Anthropic API internal error. Try again shortly.',
+        502: 'Anthropic API temporarily unavailable. Try again shortly.',
+        503: 'Anthropic API temporarily unavailable. Try again shortly.',
+      };
+
       return res.status(response.status).json({
-        error: `Anthropic API error: ${response.status}`,
-        details: errorBody,
+        error: safeMessages[response.status] || `API error (${response.status}). Try again later.`,
       });
     }
 
@@ -131,10 +170,9 @@ app.post('/api/claude', rateLimit, validateRequest, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Proxy error:', error);
+    console.error('[Proxy error]', error.message);
     res.status(500).json({
-      error: 'Failed to connect to Anthropic API',
-      details: error.message,
+      error: 'Failed to connect to Anthropic API. Ensure the proxy has network access.',
     });
   }
 });

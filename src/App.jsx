@@ -176,8 +176,9 @@ export default function App() {
                     Cancel
                   </button>
                 </div>
-                <p style={{ fontSize: '0.7rem', marginTop: 10, color: 'var(--color-text-muted)', fontFamily: MONO }}>
-                  Stored in localStorage
+                <p style={{ fontSize: '0.65rem', marginTop: 10, color: 'var(--color-text-muted)', fontFamily: MONO, lineHeight: 1.5 }}>
+                  Key is stored in localStorage (not secure for production).
+                  Prefer setting ANTHROPIC_API_KEY in the .env file.
                 </p>
               </div>
             )}
