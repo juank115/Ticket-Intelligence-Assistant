@@ -6,7 +6,7 @@ AI-powered ticket analysis tool for L2 support engineers. Paste a raw support ti
 
 ```bash
 # 1. Clone and install
-git clone <repo-url>
+git clone https://github.com/juank115/Ticket-Intelligence-Assistant.git
 cd ticket-intel-assistant
 npm install
 
